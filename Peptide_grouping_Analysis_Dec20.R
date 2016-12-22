@@ -9,9 +9,25 @@ peplist=transform(peplist, PROBE_ID = colsplit(PROBE_ID, "_", names = c("Pos", "
 peplist= cbind(peplist, peplist$PROBE_ID)
 peplist
 peplist$PROBE_ID = NULL
+require(data.table)
+setDT(peplist)
+peplist2 = peplist[, list(subtype = paste(unique(subtype), collapse = "/")), by = list(PEPTIDE_SEQUENCE, flu_prot, Pos)]
 #read in another text file containing all the probe IDS
 all_probes = read_delim('~/Desktop/ProteinIDS_seq.txt', delim = ";", col_names = F)
 colnames(all_probes) = c("PROTID", "FULLNAME", "SEQUENCE")
 flu_main=all_probes[grep("Influenza", all_probes$FULLNAME),]
+require(stringr)
+flu_list=split.data.frame(flu_main, flu_main$FULLNAME)
+flu1=as_data_frame(str_split_fixed(flu_main$FULLNAME, " ", 6))
+
+
+
+
+flu1$proteinname = 
+
+
+flu_main_unique=flu_main[, list(PROTID = paste(unique(PROTID), collapse = "/"), FULLNAME = paste(unique(FULLNAME), collapse = "/")), by=list(SEQUENCE)]
+final_grouping=merge.data.frame(peplist2, flu_main, by.x ="PEPTIDE_SEQUENCE", by.y = "SEQUENCE", all.x= T)
+
 flu_main1=colsplit(flu_main$FULLNAME, " ", names = 1:6)
 flu_main2=unique(flu_main1)
