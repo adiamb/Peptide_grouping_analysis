@@ -21,11 +21,12 @@ flu_list=split.data.frame(flu_main, flu_main$FULLNAME)
 flu1=as_data_frame(str_split_fixed(flu_main$FULLNAME, " ", 6))
 
 flu_main$subtype=ifelse(str_detect(flu_main$FULLNAME, "California"), "pH1N1",
-       ifelse(str_detect(flu_main$FULLNAME, "Solomon|Puerto|South"), "gH1N1",
-              "H3N2"))
+       ifelse(str_detect(flu_main$FULLNAME, "Solomon"), "gH1N1", 
+              ifelse(str_detect(flu_main$FULLNAME, "Puerto|South"), "pastpH1N1",
+                     "H3N2")))
 
 flu_main_unique=flu_main[, list(PROTID = paste(unique(PROTID), collapse = "/"), FULLNAME = paste(unique(FULLNAME), collapse = "/")), by=list(SEQUENCE, subtype)]
-final_grouping=merge.data.frame(peplist, flu_main_unique, by.x ="PEPTIDE_SEQUENCE", by.y = "SEQUENCE", all= T)
+final_grouping=merge.data.frame(peplist2, flu_main_unique, by.x ="PEPTIDE_SEQUENCE", by.y = "SEQUENCE", all= T)
 
 flu_main1=colsplit(flu_main$FULLNAME, " ", names = 1:6)
 flu_main2=unique(flu_main1)
