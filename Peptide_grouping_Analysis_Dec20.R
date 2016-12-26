@@ -11,7 +11,6 @@ peplist
 peplist$PROBE_ID = NULL
 require(data.table)
 setDT(peplist)
-peplist2 = peplist[, list(subtype = paste(unique(subtype), collapse = "/")), by = list(PEPTIDE_SEQUENCE, flu_prot, Pos)]
 #read in another text file containing all the probe IDS
 all_probes = read_delim('~/Desktop/ProteinIDS_seq.txt', delim = ";", col_names = F)
 colnames(all_probes) = c("PROTID", "FULLNAME", "SEQUENCE")
@@ -41,6 +40,22 @@ flu_main$Protname = ifelse(str_detect(flu_main$FULLNAME, "Polymerase basic prote
                                                                                                  ifelse(str_detect(flu_main$FULLNAME, "nonstructural protein 2"), "NS2",
                                                                                                  NA))))))))))))
                                                                                             
+
+
+
+
+
+
+##select only peptide sequence and the protein names and the subtype from the flu_main data frames 
+flu_main1 = select(flu_main, SEQUENCE, subtype, Protname)
+peplist2 = select(peplist, PEPTIDE_SEQUENCE, subtype, flu_prot)
+names(peplist2) = names(flu_main1) ##match the colnames from each of the data frame
+final_pep_df=rbind.data.frame(peplist2, flu_main1)
+##aggregate to get common sequences between strains
+require(data.table)
+setDT(final_pep_df)
+final_grouping = final_pep_df[, list(subtype = paste(unique(subtype), collapse = "/")), by = list(SEQUENCE, Protname)]
+
 
 flu_main_unique=flu_main[, list(PROTID = paste(unique(PROTID), collapse = "/"), FULLNAME = paste(unique(FULLNAME), collapse = "/")), by=list(SEQUENCE, subtype)]
 final_grouping=merge.data.frame(peplist2, flu_main_unique, by.x ="PEPTIDE_SEQUENCE", by.y = "SEQUENCE", all= T)
