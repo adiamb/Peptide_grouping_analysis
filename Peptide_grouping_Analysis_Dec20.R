@@ -53,5 +53,29 @@ final_pep_df=rbind.data.frame(peplist2, flu_main1)
 require(data.table)
 setDT(final_pep_df)
 final_grouping = final_pep_df[, list(subtype = paste(unique(subtype), collapse = "/")), by = list(SEQUENCE, Protname)]
+grouping_list = split.data.frame(final_grouping, final_grouping$subtype)
+##read in the peptide array results - using the qunatile normalized data from roche 
+total_IgG = fread('~/Documents/IgG_Analysis/normalized_qunatile/final_aggregated_data_Dec12.csv', showProgress = T)
+total_IgG = as_data_frame(total_IgG) # convert to normal dataframe
+###peptide present only in pH1N1
+pH1N1=total_IgG[colnames(total_IgG) %in% grouping_list$pH1N1$SEQUENCE]
+pH1N1 = cbind(total_IgG[1:7], pH1N1)
+###peptide present only in gH1N1
+gH1N1=total_IgG[colnames(total_IgG) %in% grouping_list$gH1N1$SEQUENCE]
+gH1N1 = cbind(total_IgG[1:7], gH1N1)
+###peptide present only in H3N2
+H3N2=total_IgG[colnames(total_IgG) %in% grouping_list$H3N2$SEQUENCE]
+H3N2 = cbind(total_IgG[1:7], H3N2)
+
+
+
+
+
+
+
+
+
+
+
 
 
