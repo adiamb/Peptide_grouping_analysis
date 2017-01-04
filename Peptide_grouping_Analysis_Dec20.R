@@ -67,7 +67,7 @@ gH1N1 = cbind(total_IgG[c(1:7, 142030)], gH1N1)
 ###peptide present only in H3N2
 H3N2=total_IgG[colnames(total_IgG) %in% grouping_list$H3N2$SEQUENCE]
 H3N2 = cbind(total_IgG[c(1:7, 142030)], H3N2)
-
+#################################################################################TOTAL SAMPLES ANALYSIS#########################################################################################
 ##SAMR analysis pH1N1
 require(samr)
 require(Biobase)
@@ -144,12 +144,12 @@ object #see if the dimensions are right !
 design = model.matrix(~Diagnosis+Gender, data = H3N2) 
 fit = eBayes(lmFit(object, design))
 topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
-
+#################################################################################################split analysis - recent onset and pandemrix ########################################################
 ##split samples into recent onset and pandemrix
 require(dplyr)
 pH1N1_recent = filter(pH1N1, sample_group == "early onset")
 pH1N1_PX = filter(pH1N1, sample_group == "pandemrix")
-
+##recent onset SAMR pH1N1
 y = ifelse(pH1N1_recent$Dx == "K", 1, 2)
 x = log(t(pH1N1_recent[9:ncol(pH1N1_recent)]))
 
