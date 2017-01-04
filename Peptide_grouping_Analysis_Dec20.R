@@ -54,19 +54,31 @@ require(data.table)
 setDT(final_pep_df)
 final_grouping = final_pep_df[, list(subtype = paste(unique(subtype), collapse = "/")), by = list(SEQUENCE, Protname)]
 grouping_list = split.data.frame(final_grouping, final_grouping$subtype)
+
+
+
 ##read in the peptide array results - using the qunatile normalized data from roche 
 total_IgG = fread('~/Documents/IgG_Analysis/normalized_qunatile/final_aggregated_data_Dec12.csv', showProgress = T)
 total_IgG = as_data_frame(total_IgG)# convert to normal dataframe
 total_IgG$Diagnosis = ifelse(total_IgG$Dx == "K", 0, 1) #add diagnosis in the last column
+##check the dims of each dataframe in the list
+lapply(grouping_list, FUN = function(x) (dim(x)))
+##for loop to match and separate the IgG responses to each peptide grouping 
+pep_group = list()
+for (i in names(grouping_list)){
+  temp = total_IgG[colnames(total_IgG) %in% grouping_list[[i]]$SEQUENCE]
+  temp2 = cbind(total_IgG[c(1:7, 142030)], temp)
+  name = paste(i)
+  pep_group[[name]] = temp2
+}
+
+
 ###peptides present only in pH1N1
-pH1N1=total_IgG[colnames(total_IgG) %in% grouping_list$pH1N1$SEQUENCE]
-pH1N1 = cbind(total_IgG[c(1:7, 142030)], pH1N1)
+pH1N1=pep_group$pH1N1
 ###peptide present only in gH1N1
-gH1N1=total_IgG[colnames(total_IgG) %in% grouping_list$gH1N1$SEQUENCE]
-gH1N1 = cbind(total_IgG[c(1:7, 142030)], gH1N1)
+gH1N1=pep_group$gH1N1
 ###peptide present only in H3N2
-H3N2=total_IgG[colnames(total_IgG) %in% grouping_list$H3N2$SEQUENCE]
-H3N2 = cbind(total_IgG[c(1:7, 142030)], H3N2)
+H3N2=pep_group$H3N2
 #################################################################################TOTAL SAMPLES ANALYSIS#########################################################################################
 ##SAMR analysis pH1N1
 require(samr)
@@ -196,9 +208,108 @@ object #see if the dimensions are right !
 design = model.matrix(~Diagnosis+Gender, data = pH1N1_PX) 
 fit = eBayes(lmFit(object, design))
 topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
+#################################################################################################split samples gH1N1#############################################################
+require(dplyr)
+gH1N1_recent = filter(gH1N1, sample_group == "early onset")
+gH1N1_PX = filter(gH1N1, sample_group == "pandemrix")
+##recent onset SAMR gH1N1
+y = ifelse(gH1N1_recent$Dx == "K", 1, 2)
+x = log(t(gH1N1_recent[9:ncol(gH1N1_recent)]))
 
+d <- list(x=x, y=y, geneid=row.names(x), logged2 = T)
+samr.obj<-samr(d,  resp.type="Two class unpaired", nperms=1000, assay.type = "array")
+delta.table <- samr.compute.delta.table(samr.obj)
+delta.table
+delta=0.2
+samr.plot(samr.obj,delta)
 
+siggenes.table<-samr.compute.siggenes.table(samr.obj,delta, d, delta.table)
+siggenes.table
+require(ggplot2)
+ggplot(gH1N1, aes(factor(Diagnosis), GRWTKNTETGAPQLNP, color = factor(sample_group)))+geom_point(size = 6)+stat_summary(fun.y = "median", fun.ymax = "median", fun.ymin = "median", geom = "crossbar", color = "blue")
+grouping_list$gH1N1[grep("GRWTKNTETGAPQLNP", grouping_list$gH1N1$SEQUENCE),]
 
+##limma analysis gH1N1
+object<-new("ExpressionSet", exprs=as.matrix(x)) #this is the x from above in the SAMR
+object #see if the dimensions are right !
+design = model.matrix(~Diagnosis+Gender, data = gH1N1_recent) 
+fit = eBayes(lmFit(object, design))
+topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
+
+##pandemrix gH1N1
+y = ifelse(gH1N1_PX$Dx == "K", 1, 2)
+x = log1p(t(gH1N1_PX[9:ncol(gH1N1_PX)]))
+
+d <- list(x=x, y=y, geneid=row.names(x), logged2 = T)
+samr.obj<-samr(d,  resp.type="Two class unpaired", nperms=1000, assay.type = "array")
+delta.table <- samr.compute.delta.table(samr.obj)
+delta.table
+delta=0.2
+samr.plot(samr.obj,delta)
+
+siggenes.table<-samr.compute.siggenes.table(samr.obj,delta, d, delta.table)
+siggenes.table
+require(ggplot2)
+ggplot(gH1N1, aes(factor(Diagnosis), ESVFTGKNTDLEALME, color = factor(sample_group)))+geom_point(size = 6)+stat_summary(fun.y = "median", fun.ymax = "median", fun.ymin = "median", geom = "crossbar", color = "blue")
+grouping_list$gH1N1[grep("NFAAGQSVVSAKLAGN", grouping_list$gH1N1$SEQUENCE),]
+
+##limma analysis gH1N1
+object<-new("ExpressionSet", exprs=as.matrix(x)) #this is the x from above in the SAMR
+object #see if the dimensions are right !
+design = model.matrix(~Diagnosis+Gender, data = gH1N1_PX) 
+fit = eBayes(lmFit(object, design))
+topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
+#################################################################################################split samples H3N2#############################################################
+require(dplyr)
+H3N2_recent = filter(H3N2, sample_group == "early onset")
+H3N2_PX = filter(H3N2, sample_group == "pandemrix")
+##recent onset SAMR H3N2
+y = ifelse(H3N2_recent$Dx == "K", 1, 2)
+x = log(t(H3N2_recent[9:ncol(H3N2_recent)]))
+
+d <- list(x=x, y=y, geneid=row.names(x), logged2 = T)
+samr.obj<-samr(d,  resp.type="Two class unpaired", nperms=1000, assay.type = "array")
+delta.table <- samr.compute.delta.table(samr.obj)
+delta.table
+delta=0.2
+samr.plot(samr.obj,delta)
+
+siggenes.table<-samr.compute.siggenes.table(samr.obj,delta, d, delta.table)
+siggenes.table
+require(ggplot2)
+ggplot(H3N2, aes(factor(Diagnosis), GRWTKNTETGAPQLNP, color = factor(sample_group)))+geom_point(size = 6)+stat_summary(fun.y = "median", fun.ymax = "median", fun.ymin = "median", geom = "crossbar", color = "blue")
+grouping_list$H3N2[grep("GRWTKNTETGAPQLNP", grouping_list$H3N2$SEQUENCE),]
+
+##limma analysis H3N2
+object<-new("ExpressionSet", exprs=as.matrix(x)) #this is the x from above in the SAMR
+object #see if the dimensions are right !
+design = model.matrix(~Diagnosis+Gender, data = H3N2_recent) 
+fit = eBayes(lmFit(object, design))
+topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
+
+##pandemrix H3N2
+y = ifelse(H3N2_PX$Dx == "K", 1, 2)
+x = log1p(t(H3N2_PX[9:ncol(H3N2_PX)]))
+
+d <- list(x=x, y=y, geneid=row.names(x), logged2 = T)
+samr.obj<-samr(d,  resp.type="Two class unpaired", nperms=1000, assay.type = "array")
+delta.table <- samr.compute.delta.table(samr.obj)
+delta.table
+delta=0.17
+samr.plot(samr.obj,delta)
+
+siggenes.table<-samr.compute.siggenes.table(samr.obj,delta, d, delta.table)
+siggenes.table
+require(ggplot2)
+ggplot(H3N2, aes(factor(Diagnosis), ESVFTGKNTDLEALME, color = factor(sample_group)))+geom_point(size = 6)+stat_summary(fun.y = "median", fun.ymax = "median", fun.ymin = "median", geom = "crossbar", color = "blue")
+grouping_list$H3N2[grep("NFAAGQSVVSAKLAGN", grouping_list$H3N2$SEQUENCE),]
+
+##limma analysis H3N2
+object<-new("ExpressionSet", exprs=as.matrix(x)) #this is the x from above in the SAMR
+object #see if the dimensions are right !
+design = model.matrix(~Diagnosis+Gender, data = H3N2_PX) 
+fit = eBayes(lmFit(object, design))
+topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
 
 
 
