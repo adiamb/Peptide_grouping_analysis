@@ -366,9 +366,69 @@ object #see if the dimensions are right !
 design = model.matrix(~Diagnosis+Gender, data = shared_flu_PX) 
 fit = eBayes(lmFit(object, design))
 topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
+#######################################################################################sharedH1#####################################################################################
+#####$shared flu epitopes ##### analysis
+sharedpH1_flu = pep_group$`pH1N1/pastpH1N1`
+require(samr)
+require(dplyr)
+sharedpH1_flu_recent = filter(sharedpH1_flu, sample_group == "early onset")
+sharedpH1_flu_PX = filter(sharedpH1_flu, sample_group == "pandemrix")
+##recent onset SAMR sharedpH1_flu
+y = ifelse(sharedpH1_flu_recent$Dx == "K", 1, 2)
+x = log(t(sharedpH1_flu_recent[9:ncol(sharedpH1_flu_recent)]))
 
+d <- list(x=x, y=y, geneid=row.names(x), logged2 = T)
+samr.obj<-samr(d,  resp.type="Two class unpaired", nperms=1000, assay.type = "array")
+delta.table <- samr.compute.delta.table(samr.obj)
+delta.table
+delta=0.2
+samr.plot(samr.obj,delta)
 
+siggenes.table<-samr.compute.siggenes.table(samr.obj,delta, d, delta.table)
+siggenes.table
+require(ggplot2)
+ggplot(sharedpH1_flu_recent, aes(factor(Diagnosis), RGVQIASNENMETMES, color = factor(sample_group)))+geom_point(size = 6)+stat_summary(fun.y = "median", fun.ymax = "median", fun.ymin = "median", geom = "crossbar", color = "blue")
+grouping_list$`pH1N1/pastpH1N1`[grep("RGVQIASNENMETMES", grouping_list$`pH1N1/pastpH1N1`$SEQUENCE),]
 
+##limma analysis sharedpH1_flu
+object<-new("ExpressionSet", exprs=as.matrix(x)) #this is the x from above in the SAMR
+object #see if the dimensions are right !
+design = model.matrix(~Diagnosis+Gender, data = sharedpH1_flu_recent) 
+fit = eBayes(lmFit(object, design))
+topTable(fit, coef="Diagnosis1", adjust="BH", number = 30)
 
+##pandemrix sharedpH1_flu
+y = ifelse(sharedpH1_flu_PX$Dx == "K", 0, 1)
+x = log1p(t(sharedpH1_flu_PX[9:ncol(sharedpH1_flu_PX)]))
 
+d <- list(x=x, y=y, geneid=row.names(x), logged2 = T)
+samr.obj<-samr(d,  resp.type="Two class unpaired", nperms=1000, assay.type = "array")
+delta.table <- samr.compute.delta.table(samr.obj)
+delta.table
+delta=0.25
+samr.plot(samr.obj,delta)
 
+siggenes.table<-samr.compute.siggenes.table(samr.obj,delta, d, delta.table)
+siggenes.table
+require(ggplot2)
+ggplot(sharedpH1_flu_PX, aes(factor(Diagnosis), MATKADYTLDEESRAR, color = factor(sample_group)))+geom_point(size = 6)+stat_summary(fun.y = "median", fun.ymax = "median", fun.ymin = "median", geom = "crossbar", color = "blue")
+grouping_list$sharedpH1_flu[grep("NFAAGQSVVSAKLAGN", grouping_list$sharedpH1_flu$SEQUENCE),]
+
+##limma analysis sharedpH1_flu
+object<-new("ExpressionSet", exprs=as.matrix(x)) #this is the x from above in the SAMR
+object #see if the dimensions are right !
+design = model.matrix(~Diagnosis+Gender, data = sharedpH1_flu_PX) 
+fit = eBayes(lmFit(object, design))
+topTable(fit, coef="Diagnosis", adjust="BH", number = 15)
+
+##glmnet
+require(glmnet)
+y=shared_flu_PX$Diagnosis
+x=as.matrix(scale(shared_flu_PX[9:ncol(shared_flu_PX)]))
+fit1 = cv.glmnet(x=x, y=y, family ="binomial", type.measure = "class", nfolds = 3, alpha = 0.8)
+### check lambda and lambda.min
+plot(fit1)
+fit1$lambda
+fit1$lambda.min
+plot(fit1)
+fit1$glmnet.fit$beta[which(fit1$glmnet.fit$beta[,21]!=0),21] %>% sort() 
